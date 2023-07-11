@@ -5,22 +5,26 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import DirectoryLoader
+from langchain.document_loaders import PyPDFDirectoryLoader
 import os
 
 def load_api_key(path):
     with open(path, "r") as key_file:
         return key_file.read().strip()
 
-def initialize_chat_model(api_key_path, model_name="gpt-4", temperature=0):
+def initialize_chat_model(api_key_path, model_name="gpt-3.5-turbo", temperature=0):
     api_key = load_api_key(api_key_path)
     os.environ["OPENAI_API_KEY"] = api_key
     return ChatOpenAI(temperature=temperature, model_name=model_name, openai_api_key=api_key)
 
 def load_documents(glob_pattern):
-    txt_loader = DirectoryLoader('../data/', glob=glob_pattern)
-    documents = txt_loader.load()
+    # load documents from pdf files in the data directory
+    pdf_loader = PyPDFDirectoryLoader('../data/')
+    pages = pdf_loader.load_and_split()
+    # print the number of pages loaded
+    print("loaded {} pages".format(len(pages)))
     text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-    documents = text_splitter.split_documents(documents)
+    documents = text_splitter.split_documents(pages)
     return documents
 
 def load_or_create_chroma(persist_directory, documents=None):
@@ -69,7 +73,7 @@ def launch_demo(qa_chain):
     demo.launch(debug=True)
 
 def main():
-    glob_pattern = "**/*.txt"
+    glob_pattern = "**/*.pdf"
     llm = initialize_chat_model("../key/key.txt")
 
     if not os.path.exists('db'):
